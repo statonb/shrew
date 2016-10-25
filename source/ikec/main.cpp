@@ -41,13 +41,127 @@
 
 #include "ikec.h"
 
+#define TIMER_SIGBP SIGRTMAX
+
+typedef enum
+{
+    AUTO_CONNECT_STATE_INIT
+    , AUTO_CONNECT_STATE_CONNECTING
+    , AUTO_CONNECT_STATE_CONNECTED
+} autoConnectState_t;
+
+IKEC theIkec;
+autoConnectState_t autoConnectState = AUTO_CONNECT_STATE_INIT;
+
+timer_t autorunTimerID;
+struct itimerspec autorunTimerSpec;
+
+static void timerSignalHandler(int sig, siginfo_t *si, void *uc);
+
+int timerStart(uint32_t msec)
+{
+    int returnVal = 0;
+    time_t sec;
+    long nsec;
+
+    sec = (time_t)(msec / 1000);
+    nsec = (long)(msec % 1000) * 1000000;
+
+    autorunTimerSpec.it_value.tv_sec = sec;
+    autorunTimerSpec.it_value.tv_nsec = nsec;
+    autorunTimerSpec.it_interval.tv_sec = 0;
+    autorunTimerSpec.it_interval.tv_nsec = 0;
+
+    if (timer_settime(autorunTimerID, 0, &autorunTimerSpec, NULL) == -1)
+    {
+        theIkec.log(STATUS_FAIL, "Can't start timer\n");
+        returnVal = 1;
+    }
+    return returnVal;
+}
+
+int timerInit(void)
+{
+    struct sigaction sa;
+    struct sigevent sev;
+    int returnVal = 0;
+
+    sa.sa_flags = SA_SIGINFO;
+    sa.sa_sigaction = timerSignalHandler;
+    sigemptyset(&sa.sa_mask);
+    if (sigaction(TIMER_SIGBP, &sa, NULL) == -1)
+    {
+        theIkec.log(STATUS_FAIL, "Can't initialize timer signal\n");
+        returnVal = 1;
+    }
+    sev.sigev_notify = SIGEV_SIGNAL;
+    sev.sigev_signo = TIMER_SIGBP;
+    sev.sigev_value.sival_ptr = &autorunTimerID;
+
+    if (timer_create(CLOCK_REALTIME, &sev, &autorunTimerID) == -1)
+    {
+        theIkec.log(STATUS_FAIL, "Can't create timer\n");
+        returnVal = 1;
+    }
+
+    return returnVal;
+}
+
+static void timerSignalHandler(int sig, siginfo_t *si, void *uc)
+{
+    CLIENT_STATE theClientState = theIkec.state();
+    uint32_t timerRestartValue = 1000;
+    struct tm *pTm;
+    time_t now;
+    char tbuff[256];
+
+    time(&now);
+    pTm = localtime(&now);
+    strftime(tbuff, sizeof(tbuff), "%F %T", pTm);
+
+    switch (autoConnectState)
+    {
+        case AUTO_CONNECT_STATE_INIT:
+        case AUTO_CONNECT_STATE_CONNECTING:
+            if (CLIENT_STATE_CONNECTING == theClientState)
+            {
+                autoConnectState = AUTO_CONNECT_STATE_CONNECTING;
+                timerRestartValue = 10000;
+            }
+            else if (CLIENT_STATE_CONNECTED == theClientState)
+            {
+                theIkec.log(STATUS_INFO, "AutoConnect[%s]: Client Connected\n", tbuff);
+                autoConnectState = AUTO_CONNECT_STATE_CONNECTED;
+                timerRestartValue = 1000;
+            }
+            else
+            {
+                theIkec.vpn_connect( true );
+                autoConnectState = AUTO_CONNECT_STATE_CONNECTING;
+                timerRestartValue = 10000;
+            }
+            break;
+
+        case AUTO_CONNECT_STATE_CONNECTED:
+        default:
+            if (CLIENT_STATE_DISCONNECTED == theClientState)
+            {
+                theIkec.log(STATUS_WARN, "AutoConnect[%s]: Client Disconnected.  Attempting re-connect\n", tbuff);
+                theIkec.vpn_connect( true );
+                autoConnectState = AUTO_CONNECT_STATE_CONNECTING;
+                timerRestartValue = 10000;
+            }
+            break;
+    }
+    timerStart(timerRestartValue);
+}
+
 int main( int argc, char ** argv )
 {
-	IKEC ikec;
 
 	signal( SIGPIPE, SIG_IGN );
 
-	ikec.log( 0,
+	theIkec.log( 0,
 		"## : VPN Connect, ver %d.%d.%d\n"
 		"## : Copyright %i Shrew Soft Inc.\n"
 		"## : press the <h> key for help\n",
@@ -58,20 +172,24 @@ int main( int argc, char ** argv )
 
 	// read our command line args
 
-	if( ikec.read_opts( argc, argv ) != OPT_RESULT_SUCCESS )
+	if( theIkec.read_opts( argc, argv ) != OPT_RESULT_SUCCESS )
 	{
-		ikec.show_help();
+		theIkec.show_help();
 		return -1;
 	}
 
 	// load our site configuration
 
-	if( ikec.config_load() )
+	if( theIkec.config_load() )
 	{
 		// autoconnect if requested
 
-		if( ikec.auto_connect() )
-			ikec.vpn_connect( true );
+		if( theIkec.auto_connect() )
+		{
+            timerInit();
+            timerStart(1000);
+			// theIkec.vpn_connect( true );
+        }
 	}
 
 	// process user input
@@ -81,22 +199,22 @@ int main( int argc, char ** argv )
 	while( !exit )
 	{
 		char next;
-		if( !ikec.read_key( next ) )
-			next = 'q';
+		if( !theIkec.read_key( next ) )
+			next = 127;
 
 		switch( next )
 		{
 			case 'c': // <c> connect
-				ikec.vpn_connect( true );
+				theIkec.vpn_connect( true );
 				break;
 
 			case 'd': // <d> disconnect
-				ikec.vpn_disconnect();
+				theIkec.vpn_disconnect();
 				break;
 
 			case 'h': // <h> help
 			case '?': // <?> help
-				ikec.log( 0, "%s",
+				theIkec.log( 0, "%s",
 					"Use the following keys to control client connectivity\n"
 					" - : <c> connect\n"
 					" - : <d> disconnect\n"
@@ -110,8 +228,11 @@ int main( int argc, char ** argv )
 				break;
 
 			case 's': // <s> status
-				ikec.show_stats();
+				theIkec.show_stats();
 				break;
+
+            case 127: //
+                break;
 		}
 	}
 
