@@ -27,7 +27,7 @@ include( CheckCSourceCompiles )
 include( CheckLibraryExists )
 
 set(
-	RELVER "2.3.0" )
+	RELVER "2.3.1" )
 
 subdirs(
 	source/iked
