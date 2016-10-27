@@ -221,13 +221,14 @@ long _IKED::init( long setlevel )
 		level = setlevel;
 
 	bool logging = log.open( path_log, level, logflags );
-	
+
 	//
 	// output our identity
 	//
 
 	log.txt( LLOG_NONE,
 		"## : IKE Daemon, ver %d.%d.%d\n"
+		"## : Test C\n"
 		"## : Copyright %i Shrew Soft Inc.\n"
 		"## : This product linked %s\n",
 		CLIENT_VER_MAJ,

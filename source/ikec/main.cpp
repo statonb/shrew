@@ -165,6 +165,7 @@ int main( int argc, char ** argv )
 
 	theIkec.log( 0,
 		"## : VPN Connect, ver %d.%d.%d\n"
+		"## : Test C\n"
 		"## : Copyright %i Shrew Soft Inc.\n"
 		"## : press the <h> key for help\n",
 		CLIENT_VER_MAJ,
