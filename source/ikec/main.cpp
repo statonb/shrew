@@ -125,6 +125,7 @@ static void timerSignalHandler(int sig, siginfo_t *si, void *uc)
         case AUTO_CONNECT_STATE_CONNECTING:
             if (CLIENT_STATE_CONNECTING == theClientState)
             {
+                theIkec.log(STATUS_INFO, "AutoConnect[%s]: Client Connection In Process\n", tbuff);
                 autoConnectState = AUTO_CONNECT_STATE_CONNECTING;
                 timerRestartValue = 10000;
             }
@@ -136,6 +137,7 @@ static void timerSignalHandler(int sig, siginfo_t *si, void *uc)
             }
             else
             {
+                theIkec.log(STATUS_INFO, "AutoConnect[%s]: Client Not Connected.  Connecting...\n", tbuff);
                 theIkec.vpn_connect( true );
                 autoConnectState = AUTO_CONNECT_STATE_CONNECTING;
                 timerRestartValue = 10000;
@@ -146,7 +148,7 @@ static void timerSignalHandler(int sig, siginfo_t *si, void *uc)
         default:
             if (CLIENT_STATE_DISCONNECTED == theClientState)
             {
-                theIkec.log(STATUS_WARN, "AutoConnect[%s]: Client Disconnected.  Attempting re-connect\n", tbuff);
+                theIkec.log(STATUS_WARN, "AutoConnect[%s]: Client Disconnected.  Reconnecting...\n", tbuff);
                 theIkec.vpn_connect( true );
                 autoConnectState = AUTO_CONNECT_STATE_CONNECTING;
                 timerRestartValue = 10000;
@@ -190,7 +192,11 @@ int main( int argc, char ** argv )
             timerStart(1000);
 			// theIkec.vpn_connect( true );
         }
-	}
+    }
+    else
+    {
+        return 1;
+    }
 
 	// process user input
 

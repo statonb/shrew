@@ -55,7 +55,7 @@ bool _CONFIG_MANAGER::file_enumerate( CONFIG & config, int & index )
 
 	WIN32_FIND_DATA ffdata;
 	int found = 0;
-	
+
 	HANDLE hfind = FindFirstFile( sites_user_spec.text(), &ffdata );
 	if( hfind == INVALID_HANDLE_VALUE )
 		return false;
@@ -131,7 +131,7 @@ bool _CONFIG_MANAGER::file_enumerate_public( CONFIG & config, int & index )
 
 	WIN32_FIND_DATA ffdata;
 	int found = 0;
-	
+
 	HANDLE hfind = FindFirstFile( sites_user_spec.text(), &ffdata );
 	if( hfind == INVALID_HANDLE_VALUE )
 		return false;
@@ -177,6 +177,8 @@ bool _CONFIG_MANAGER::file_vpn_load( CONFIG & config )
 		path.add( sites_all );
 	else
 		path.add( sites_user );
+
+    if (0 == path.size()) return false;
 
 	path.ins( PATH_DELIM, 1, path.size() - 1 );
 	path.ins( config.get_id(), strlen( config.get_id() ), path.size() - 1 );
@@ -650,7 +652,7 @@ bool _CONFIG_MANAGER::file_pcf_load( CONFIG & config, const char * path, bool & 
 			unsigned char key[ 40 ];
 			unsigned char one[ 20 ];
 			unsigned char two[ 20 ];
-			
+
 			data.get( one, 20 );
 			data.get( two, 20 );
 
