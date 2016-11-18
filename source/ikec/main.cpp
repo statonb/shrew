@@ -53,6 +53,9 @@ typedef enum
 IKEC theIkec;
 autoConnectState_t autoConnectState = AUTO_CONNECT_STATE_INIT;
 
+#define MAX_AUTOCONNECT_COUNT   (6)
+int autoConnectCount = 0;
+
 timer_t autorunTimerID;
 struct itimerspec autorunTimerSpec;
 
@@ -125,12 +128,15 @@ static void timerSignalHandler(int sig, siginfo_t *si, void *uc)
         case AUTO_CONNECT_STATE_CONNECTING:
             if (CLIENT_STATE_CONNECTING == theClientState)
             {
-                theIkec.log(STATUS_INFO, "AutoConnect[%s]: Client Connection In Process\n", tbuff);
+                if (autoConnectCount >= MAX_AUTOCONNECT_COUNT) exit(1);
+                ++autoConnectCount;
+                theIkec.log(STATUS_INFO, "AutoConnect[%s]: Client Connection In Process (%d)\n", tbuff, autoConnectCount);
                 autoConnectState = AUTO_CONNECT_STATE_CONNECTING;
                 timerRestartValue = 10000;
             }
             else if (CLIENT_STATE_CONNECTED == theClientState)
             {
+                autoConnectCount = 0;
                 theIkec.log(STATUS_INFO, "AutoConnect[%s]: Client Connected\n", tbuff);
                 autoConnectState = AUTO_CONNECT_STATE_CONNECTED;
                 timerRestartValue = 1000;
@@ -165,7 +171,7 @@ int main( int argc, char ** argv )
 
 	theIkec.log( 0,
 		"## : VPN Connect, ver %d.%d.%d\n"
-		"## : Test C\n"
+		"## : Test D\n"
 		"## : Copyright %i Shrew Soft Inc.\n"
 		"## : press the <h> key for help\n",
 		CLIENT_VER_MAJ,
