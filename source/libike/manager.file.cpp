@@ -217,11 +217,13 @@ bool _CONFIG_MANAGER::file_vpn_load( CONFIG & config, const char * path, bool sa
 		type = fgetc( fp );
 
 		if( ( type == ' ' ) ||
-			( type == '\r' ) )
+			( type == '\r' ) ||
+			( type == 0x0A ) )
 			continue;
 
 		if( ( type == '\n' ) ||
-			( type == EOF ) )
+			( type == EOF )  ||
+			( type == 0xFF) )
 			break;
 
 		//
