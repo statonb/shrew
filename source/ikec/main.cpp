@@ -39,6 +39,15 @@
  *
  */
 
+#include <stdio.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/ip.h> /* superset of previous */
+#include <unistd.h>
+
 #include "ikec.h"
 
 #define TIMER_SIGBP SIGRTMAX
@@ -164,6 +173,27 @@ static void timerSignalHandler(int sig, siginfo_t *si, void *uc)
     timerStart(timerRestartValue);
 }
 
+int setMtu(const char *iface, int mtu)
+{
+    int retVal = 0;
+    struct ifreq ifr;
+    int sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
+    if (sockfd <= 0)
+    {
+        return -2;
+    }
+    ifr.ifr_addr.sa_family = AF_INET;//address family
+    strncpy(ifr.ifr_name, iface, sizeof(ifr.ifr_name));//interface name where you want to set the MTU
+    ifr.ifr_mtu = mtu; //your MTU size here
+    if (ioctl(sockfd, SIOCSIFMTU, (caddr_t)&ifr) < 0)
+    {
+        //failed to set MTU. handle error.
+        retVal = -1;
+    }
+    close(sockfd);
+    return retVal;
+}
+
 int main( int argc, char ** argv )
 {
 
@@ -185,6 +215,27 @@ int main( int argc, char ** argv )
 	{
 		theIkec.show_help();
 		return -1;
+	}
+
+	if (theIkec.mtu())
+	{
+        // non-zero MTU.  User must have entered an command-line option
+        int setMtuResult = setMtu(theIkec.iface(), theIkec.mtu());
+        switch(setMtuResult)
+        {
+            case -1:
+                theIkec.log(STATUS_FAIL,"Failed to set MTU.  Run as sudo\n");
+                break;
+            case -2:
+                theIkec.log(STATUS_FAIL,"Error getting socket\n");
+                break;
+            case 0:
+                theIkec.log(STATUS_INFO, "%s MTU=%d\n", theIkec.iface(), theIkec.mtu());
+                break;
+            default:
+                theIkec.log(STATUS_FAIL,"setMtu() returned %d\n", setMtuResult);
+                break;
+        }
 	}
 
 	// load our site configuration

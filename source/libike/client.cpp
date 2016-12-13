@@ -356,7 +356,7 @@ bool _CLIENT::run_init()
 
 		proposal_isakmp.ciph_kl = ( unsigned short ) numb;
 	}
-	
+
 	// phase1 hash type
 
 	if( !config.get_string( "phase1-hash", text, MAX_CONFSTRING, 0 ) )
@@ -679,7 +679,7 @@ bool _CLIENT::run_init()
 			if( numb )
 			{
 				// auto server configuration
-				
+
 				xconf.rqst |= IPSEC_OPTS_NBNS;
 			}
 			else
@@ -1377,6 +1377,8 @@ _CLIENT::_CLIENT()
 	cstate = CLIENT_STATE_DISCONNECTED;
 	autoconnect = false;
 	suspended = false;
+	_mtu = 0;
+	strcpy(_iface, "eth0");
 }
 
 _CLIENT::~_CLIENT()
@@ -1489,6 +1491,26 @@ OPT_RESULT _CLIENT::read_opts( int argc, char ** argv )
 			continue;
 		}
 
+		if( !strcmp( argv[ argi ], "-m" ) )
+		{
+			if( ++argi >= argc )
+				return OPT_RESULT_SYNTAX_ERROR;
+
+			_mtu = (int)strtol( argv[ argi ], NULL, 0 );
+
+			continue;
+		}
+
+		if( !strcmp( argv[ argi ], "-i" ) )
+		{
+			if( ++argi >= argc )
+				return OPT_RESULT_SYNTAX_ERROR;
+
+			strncpy(_iface, argv[argi], sizeof(_iface));
+
+			continue;
+		}
+
 		// syntax error
 
 		return OPT_RESULT_SYNTAX_ERROR;
@@ -1508,11 +1530,13 @@ void _CLIENT::show_help()
 		"invalid parameters specified ...\n" );
 
 	log( STATUS_INFO,
-		"%s -r \"name\" [ -u <user> ][ -p <pass> ][ -a ]\n"
+		"%s -r \"name\" [ -u <user> ][ -p <pass> ][ -a ] [-m MTU [-i iface]]\n"
 		" -r\tsite configuration path\n"
 		" -u\tconnection user name\n"
 		" -p\tconnection user password\n"
-		" -a\tauto connect\n",
+		" -a\tauto connect\n"
+		" -m\tmtu\n"
+		" -i\tinterface\n",
 		app_name() );
 }
 
@@ -1520,7 +1544,7 @@ bool _CLIENT::config_load()
 {
 	if( !site_name.size() )
 		return false;
-	
+
 	config.set_id( site_name.text() );
 
 	bool loaded = manager.file_vpn_load( config );
@@ -1547,6 +1571,16 @@ bool _CLIENT::config_load()
 bool _CLIENT::auto_connect()
 {
 	return autoconnect;
+}
+
+int _CLIENT::mtu()
+{
+    return _mtu;
+}
+
+const char *_CLIENT::iface()
+{
+    return _iface;
 }
 
 bool _CLIENT::user_credentials()
@@ -1608,7 +1642,7 @@ bool _CLIENT::vpn_disconnect()
 
 		return false;
 	}
-	
+
 	ikei.wakeup();
 
 	return true;

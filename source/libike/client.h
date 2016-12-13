@@ -98,7 +98,9 @@ typedef class DLX _CLIENT : public ITH_EXEC
 	BDATA	password;
 	bool	autoconnect;
 	bool	suspended;
-	
+	int     _mtu;
+	char    _iface[64];
+
 	virtual const char * app_name() = 0;
 
 	virtual bool	get_username() = 0;
@@ -137,6 +139,9 @@ typedef class DLX _CLIENT : public ITH_EXEC
 
 	bool		vpn_suspend();
 	bool		vpn_resume();
+
+	int         mtu();
+	const char *iface();
 
 	virtual bool	log( long code, const char * format, ... ) = 0;
 

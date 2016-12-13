@@ -199,7 +199,10 @@ bool _CONFIG_MANAGER::file_vpn_load( CONFIG & config, const char * path, bool sa
 
 	FILE * fp = fopen( path, "r" );
 	if( fp == NULL )
+	{
+        fprintf(stderr, "Failed to load %s\n", path);
 		return false;
+    }
 
 #endif
 
